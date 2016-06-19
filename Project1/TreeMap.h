@@ -10,7 +10,7 @@ private:
 	Node<K, V>* m_root;
 private:
 	inline bool CAS(Node<K, V>* parent, int which, Node<K, V>* oldChild, Node<K, V>* newChild);
-	inline void seek(K key, Node<K, V>* parent, Node<K, V>* node, Node<K, V>* injectionPoint);
+	inline void seek(K key, Node<K, V>** parent, Node<K, V>** node, Node<K, V>** injectionPoint);
 	Node<K, V>* getAddress(Node<K, V>* p);
 	inline bool isNull(Node<K, V>* p);
 	inline bool isLocked(Node<K, V>* p);
@@ -123,7 +123,7 @@ inline void unlockEdge(Node<K, V>* parent, int which)
 }
 
 template<typename K, typename V>
-inline void TreeMap<K, V>::seek(K key, Node<K, V>* parent, Node<K, V>* node, Node<K, V>* injectionPoint)
+inline void TreeMap<K, V>::seek(K key, Node<K, V>** parent, Node<K, V>** node, Node<K, V>** injectionPoint)
 {
 	Node<K, V>* prev[2];
 	Node<K, V>* curr[2];
@@ -208,9 +208,9 @@ BEGIN:
 END:
 	{
 		//initialize the seek record and return
-		parent = prev[index];
-		node = curr[index];
-		injectionPoint = address[index];
+		*parent = prev[index];
+		*node = curr[index];
+		*injectionPoint = address[index];
 		return;
 	}
 }
@@ -218,14 +218,14 @@ END:
 template<typename K, typename V>
 V TreeMap<K, V>::lookup(const K key)
 {
-	Node<K, V> parent;
-	Node<K, V> node;
-	Node<K, V> injectionPoint;
+	Node<K, V>* parent;
+	Node<K, V>* node;
+	Node<K, V>* injectionPoint;
 
 	seek(key, &parent, &node, &injectionPoint);
-	if (node.m_key == key)
+	if (node->m_key == key)
 	{
-		return node.m_value;
+		return node->m_value;
 	}
 	else
 	{
@@ -236,16 +236,16 @@ V TreeMap<K, V>::lookup(const K key)
 template<typename K, typename V>
 inline bool TreeMap<K, V>::insert(K key, V value)
 {
-	Node<K, V> parent;
-	Node<K, V> node;
-	Node<K, V> injectionPoint;
+	Node<K, V>* parent;
+	Node<K, V>* node;
+	Node<K, V>* injectionPoint;
 	K nKey;
 	int which;
 	bool result;
 	while (true)
 	{
 		seek(key, &parent, &node, &injectionPoint);
-		nKey = node.m_key;
+		nKey = node->m_key;
 		if (nKey == key)
 		{
 			return false;
@@ -253,7 +253,7 @@ inline bool TreeMap<K, V>::insert(K key, V value)
 		//create a new node and initialize its fields
 		Node<K, V>* newNode = newLeafNode(key, value);
 		which = key < nKey ? LEFT : RIGHT;
-		result = CAS(&node, which, setNull(&injectionPoint), newNode);
+		result = CAS(node, which, setNull(injectionPoint), newNode);
 		if (result)
 		{
 			return true;

@@ -9,7 +9,7 @@ int main()
 	//Node<int>* node = new Node<int>(5,nullptr,nullptr);
 	//std::cout << node->getKey() << " "  << static_cast<void*>(node->getChild(0)) << std::endl;
 	TreeMap<int, int> map;
-	map.insert(5,5);
+	map.insert(5,50);
 	std::cout << map.lookup(5) << std::endl;
 	//TreeMap<float, float> mapf;
 	//std::cout << mapf.lookup(2) << std::endl;

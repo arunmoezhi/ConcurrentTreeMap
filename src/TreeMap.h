@@ -14,19 +14,21 @@ private:
 	Node<K, V>* getAddress(Node<K, V>* p);
 	inline bool isNull(Node<K, V>* p);
 	inline bool isLocked(Node<K, V>* p);
+	inline Node<K, V>* setMark(Node<K, V>* p);
 	inline Node<K, V>* setLock(Node<K, V>* p);
 	inline Node<K, V>* unsetLock(Node<K, V>* p);
 	inline Node<K, V>* setNull(Node<K, V>* p);
 	inline Node<K, V>* newLeafNode(K key, V value);
 	inline bool lockEdge(Node<K, V>* parent, Node<K, V>* oldChild, int which, bool n);
 	inline void unlockEdge(Node<K, V>* parent, int which);
+	inline bool findSmallest(Node<K, V>* node, Node<K, V>* rChild, Node<K, V>** succNode, Node<K, V>** succParent);
 
 public:
 	TreeMap();
 
 	V lookup(const K key);
 	bool insert(K key, V value);
-	//bool remove(K key);
+	bool remove(K key);
 };
 
 template<typename K, typename V>
@@ -51,6 +53,12 @@ template<typename K, typename V>
 inline bool TreeMap<K, V>::isLocked(Node<K, V>* p)
 {
 	return ((uintptr_t)p & 1) != 0;
+}
+
+template<typename K, typename V>
+inline Node<K, V>* TreeMap<K, V>::setMark(Node<K, V>* p)
+{
+	return (Node<K, V>*) ((uintptr_t)p | 4);
 }
 
 template<typename K, typename V>
@@ -91,7 +99,7 @@ inline Node<K, V>* TreeMap<K, V>::newLeafNode(K key, V value)
 }
 
 template<typename K, typename V>
-inline bool lockEdge(Node<K, V>* parent, Node<K, V>* oldChild, int which, bool n)
+inline bool TreeMap<K, V>::lockEdge(Node<K, V>* parent, Node<K, V>* oldChild, int which, bool n)
 {
 	if (isLocked(parent->m_child[which]))
 	{
@@ -117,7 +125,7 @@ inline bool lockEdge(Node<K, V>* parent, Node<K, V>* oldChild, int which, bool n
 }
 
 template<typename K, typename V>
-inline void unlockEdge(Node<K, V>* parent, int which)
+inline void TreeMap<K, V>::unlockEdge(Node<K, V>* parent, int which)
 {
 	parent->m_child[which] = unsetLock(parent->m_child[which]);
 }
@@ -216,6 +224,41 @@ END:
 }
 
 template<typename K, typename V>
+inline bool TreeMap<K, V>::findSmallest(Node<K, V>* node, Node<K, V>* rChild, Node<K, V>** succNode, Node<K, V>** succParent)
+{
+	//find the node with the smallest key in the subtree rooted at the right child
+	Node<K, V>* prev;
+	Node<K, V>* curr;
+	Node<K, V>* lChild;
+	Node<K, V>* temp;
+	bool n;
+
+	prev=node; curr=rChild;
+	while(true)
+	{
+		temp = curr->m_child[LEFT];
+		n = isNull(temp); lChild = getAddress(temp);
+		if(n)
+		{
+			break;
+		}
+		//traverse the next edge
+		prev = curr; curr = lChild;
+	}
+	//initialize successor key seek record and return
+	*succNode = curr;
+	*succParent = prev;
+	if(prev == node)
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+template<typename K, typename V>
 V TreeMap<K, V>::lookup(const K key)
 {
 	Node<K, V>* parent;
@@ -257,6 +300,154 @@ inline bool TreeMap<K, V>::insert(K key, V value)
 		if (result)
 		{
 			return true;
+		}
+	}
+}
+
+template<typename K, typename V>
+inline bool TreeMap<K, V>::remove(K key)
+{
+	Node<K, V>* parent;
+	Node<K, V>* node;
+	Node<K, V>* lChild;
+	Node<K, V>* rChild;
+	Node<K, V>* temp;
+	Node<K, V>* injectionPoint;
+	K nKey;
+	K pKey;
+	int pWhich;
+	bool ln;
+	bool rn;
+	bool lLock;
+	bool rLock;
+
+	while(true)
+	{
+		seek(key, &parent, &node, &injectionPoint);
+		nKey = node->m_key;
+		if(nKey != key)
+		{
+			return false;
+		}
+		pKey = parent->m_key;
+		temp = node->m_child[LEFT];
+		lChild = getAddress(temp); ln = isNull(temp); lLock = isLocked(temp);
+		temp = node->m_child[RIGHT];
+		rChild = getAddress(temp); rn = isNull(temp); rLock = isLocked(temp);
+		pWhich = nKey < pKey ? LEFT: RIGHT;
+		if(ln || rn) //simple delete
+		{
+			if(lockEdge(parent, node, pWhich, false))
+			{
+				if(lockEdge(node, lChild, LEFT, ln))
+				{
+					if(lockEdge(node, rChild, RIGHT, rn))
+					{
+						if(nKey != node->m_key)
+						{
+							unlockEdge(parent, pWhich);
+							unlockEdge(node, LEFT);
+							unlockEdge(node, RIGHT);
+							continue;
+						}
+						node->m_child[RIGHT] = setMark(node->m_child[RIGHT]);
+						node->m_child[LEFT]  = setMark(node->m_child[LEFT]);
+						if(ln && rn) //00 case
+						{
+							parent->m_child[pWhich] = setNull(node);
+						}
+						else if(ln) //01 case
+						{
+							parent->m_child[pWhich] = rChild;
+						}
+						else //10 case
+						{
+							parent->m_child[pWhich] = lChild;
+						}
+						return true;
+					}
+					else
+					{
+						unlockEdge(parent, pWhich);
+						unlockEdge(node, LEFT);
+					}
+				}
+				else
+				{
+					unlockEdge(parent, pWhich);
+				}
+			}
+		}
+		else //complex delete
+		{
+			Node<K, V>* succNode;
+			Node<K, V>* succParent;
+			Node<K, V>* succNodeLChild;
+			Node<K, V>* succNodeRChild;
+			Node<K, V>* temp;
+			bool isSplCase;
+			bool srn;
+
+			isSplCase = findSmallest(node, rChild, &succNode, &succParent);
+
+			succNodeLChild = getAddress(succNode->m_child[LEFT]);
+			temp = succNode->m_child[RIGHT];
+			srn = isNull(temp); succNodeRChild = getAddress(temp);
+
+			if(!isSplCase)
+			{
+				if(!lockEdge(node, rChild, RIGHT, false))
+				{
+					continue;
+				}
+			}
+			if(lockEdge(succParent, succNode, isSplCase, false))
+			{
+				if(lockEdge(succNode, succNodeLChild, LEFT, true))
+				{
+					if(lockEdge(succNode, succNodeRChild, RIGHT, srn))
+					{
+						if(nKey != node->m_key)
+						{
+							if(!isSplCase)
+							{
+								unlockEdge(node,RIGHT);
+							}
+							unlockEdge(succParent,isSplCase);
+							unlockEdge(succNode, LEFT);
+							unlockEdge(succNode, RIGHT);
+							continue;
+						}
+						node->m_key = succNode->m_key;
+						if(srn)
+						{
+							succParent->m_child[isSplCase] = setNull(succNode);
+						}
+						else
+						{
+							succParent->m_child[isSplCase] = succNodeRChild;
+						}
+						if(!isSplCase)
+						{
+							unlockEdge(node, RIGHT);
+						}
+						return true;
+					}
+					else
+					{
+						unlockEdge(succParent,isSplCase);
+						unlockEdge(succNode, LEFT);
+					}
+				}
+				else
+				{
+					unlockEdge(succParent,isSplCase);
+				}
+			}
+			if(!isSplCase)
+			{
+				unlockEdge(node,RIGHT);
+			}
 		}
 	}
 }

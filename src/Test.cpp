@@ -11,6 +11,8 @@ int main()
 	TreeMap<int, int> map;
 	map.insert(5,50);
 	std::cout << map.lookup(5) << std::endl;
+	std::cout << map.remove(5) << std::endl;
+	std::cout << map.remove(5) << std::endl;
 	//TreeMap<float, float> mapf;
 	//std::cout << mapf.lookup(2) << std::endl;
 	return 0;

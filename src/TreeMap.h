@@ -14,7 +14,6 @@ private:
 	Node<K, V>* getAddress(Node<K, V>* p);
 	inline bool isNull(Node<K, V>* p);
 	inline bool isLocked(Node<K, V>* p);
-	inline Node<K, V>* setMark(Node<K, V>* p);
 	inline Node<K, V>* setLock(Node<K, V>* p);
 	inline Node<K, V>* unsetLock(Node<K, V>* p);
 	inline Node<K, V>* setNull(Node<K, V>* p);
@@ -22,6 +21,7 @@ private:
 	inline bool lockEdge(Node<K, V>* parent, Node<K, V>* oldChild, int which, bool n);
 	inline void unlockEdge(Node<K, V>* parent, int which);
 	inline bool findSmallest(Node<K, V>* node, Node<K, V>* rChild, Node<K, V>** succNode, Node<K, V>** succParent);
+	inline bool isValidBST(Node<K, V>* node, K min, K max);
 
 public:
 	TreeMap();
@@ -29,6 +29,7 @@ public:
 	V lookup(const K key);
 	bool insert(K key, V value);
 	bool remove(K key);
+	bool isValidTree();
 };
 
 template<typename K, typename V>
@@ -53,12 +54,6 @@ template<typename K, typename V>
 inline bool TreeMap<K, V>::isLocked(Node<K, V>* p)
 {
 	return ((uintptr_t)p & 1) != 0;
-}
-
-template<typename K, typename V>
-inline Node<K, V>* TreeMap<K, V>::setMark(Node<K, V>* p)
-{
-	return (Node<K, V>*) ((uintptr_t)p | 4);
 }
 
 template<typename K, typename V>
@@ -350,8 +345,6 @@ inline bool TreeMap<K, V>::remove(K key)
 							unlockEdge(node, RIGHT);
 							continue;
 						}
-						node->m_child[RIGHT] = setMark(node->m_child[RIGHT]);
-						node->m_child[LEFT]  = setMark(node->m_child[LEFT]);
 						if(ln && rn) //00 case
 						{
 							parent->m_child[pWhich] = setNull(node);
@@ -450,4 +443,24 @@ inline bool TreeMap<K, V>::remove(K key)
 			}
 		}
 	}
+}
+
+template<typename K, typename V>
+inline bool TreeMap<K, V>::isValidBST(Node<K, V>* node, K min, K max)
+{
+  if(isNull(node))
+  {
+    return true;
+  }
+  if(node->m_key >= min && node->m_key <= max && isValidBST(node->m_child[LEFT],min,node->m_key-1) && isValidBST(node->m_child[RIGHT],node->m_key+1,max))
+  {
+    return true;
+  }
+  return false;
+}
+
+template<typename K, typename V>
+bool TreeMap<K, V>::isValidTree()
+{
+	return(isValidBST(m_root, std::numeric_limits<K>::min(), std::numeric_limits<K>::max()));
 }

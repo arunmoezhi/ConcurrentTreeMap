@@ -387,59 +387,93 @@ inline bool ConcurrentTreeMap<K, V>::remove(K key)
 			temp = succNode->m_child[RIGHT];
 			srn = isNull(temp); succNodeRChild = getAddress(temp);
 
-			if(!isSplCase)
+			if(!lockEdge(node, rChild, RIGHT, false))
 			{
-				if(!lockEdge(node, rChild, RIGHT, false))
-				{
-					continue;
-				}
+				continue;
 			}
-			if(lockEdge(succParent, succNode, isSplCase, false))
+			while(true)
 			{
-				if(lockEdge(succNode, succNodeLChild, LEFT, true))
+				if(!isSplCase) //common case
 				{
-					if(lockEdge(succNode, succNodeRChild, RIGHT, srn))
+					if(lockEdge(succParent, succNode, LEFT, false))
 					{
-						if(nKey != node->m_key)
+						if(lockEdge(succNode, succNodeLChild, LEFT, true))
 						{
-							if(!isSplCase)
+							if(lockEdge(succNode, succNodeRChild, RIGHT, srn))
 							{
-								unlockEdge(node,RIGHT);
+								if(nKey == node->m_key)
+								{
+									node->m_key = succNode->m_key;
+									if(srn)
+									{
+										succParent->m_child[LEFT] = setNull(succNode);
+									}
+									else
+									{
+										succParent->m_child[LEFT] = succNodeRChild;
+									}
+									unlockEdge(node, RIGHT);
+									return true;
+								}
+								else
+								{
+									unlockEdge(node, RIGHT);
+									unlockEdge(succParent,LEFT);
+									unlockEdge(succNode, LEFT);
+									unlockEdge(succNode, RIGHT);
+									break;
+								}
 							}
-							unlockEdge(succParent,isSplCase);
-							unlockEdge(succNode, LEFT);
-							unlockEdge(succNode, RIGHT);
-							continue;
-						}
-						node->m_key = succNode->m_key;
-						if(srn)
-						{
-							succParent->m_child[isSplCase] = setNull(succNode);
+							else
+							{
+								unlockEdge(succParent,LEFT);
+								unlockEdge(succNode, LEFT);
+							}
 						}
 						else
 						{
-							succParent->m_child[isSplCase] = succNodeRChild;
+							unlockEdge(succParent,LEFT);
 						}
-						if(!isSplCase)
-						{
-							unlockEdge(node, RIGHT);
-						}
-						return true;
-					}
-					else
-					{
-						unlockEdge(succParent,isSplCase);
-						unlockEdge(succNode, LEFT);
 					}
 				}
-				else
+				else //spl case
 				{
-					unlockEdge(succParent,isSplCase);
+					if(lockEdge(succNode, succNodeLChild, LEFT, true))
+					{
+						if(lockEdge(succNode, succNodeRChild, RIGHT, srn))
+						{
+							if(nKey == node->m_key)
+							{
+								node->m_key = succNode->m_key;
+								if(srn)
+								{
+									succParent->m_child[RIGHT] = setNull(succNode);
+								}
+								else
+								{
+									succParent->m_child[RIGHT] = succNodeRChild;
+								}
+								return true;
+							}
+							else
+							{
+								unlockEdge(node, RIGHT);
+								unlockEdge(succNode, LEFT);
+								unlockEdge(succNode, RIGHT);
+								break;
+							}
+						}
+						else
+						{
+							unlockEdge(succNode, LEFT);
+						}
+					}
 				}
-			}
-			if(!isSplCase)
-			{
-				unlockEdge(node,RIGHT);
+				isSplCase = findSmallest(node, rChild, &succNode, &succParent);
+
+				succNodeLChild = getAddress(succNode->m_child[LEFT]);
+				temp = succNode->m_child[RIGHT];
+				srn = isNull(temp); succNodeRChild = getAddress(temp);
 			}
 		}
 	}

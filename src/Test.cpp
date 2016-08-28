@@ -5,7 +5,7 @@
 #include<gsl/gsl_rng.h>
 #include<gsl/gsl_randist.h>
 #include<assert.h>
-#include "TreeMap.h"
+#include "ConcurrentTreeMap.h"
 
 
 int NUM_OF_THREADS;
@@ -15,7 +15,7 @@ int deletePercent;
 unsigned long keyRange;
 volatile bool stop=false;
 struct timespec runTime;
-TreeMap<int, int> map;
+ConcurrentTreeMap<int, int> map;
 
 static inline unsigned long getRandomKey(gsl_rng* r)
 {

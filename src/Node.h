@@ -4,7 +4,7 @@ template<typename K, typename V>
 class Node
 {
 	template<typename K, typename V>
-	friend class TreeMap;
+	friend class ConcurrentTreeMap;
 private:
 	K m_key;
 	V m_value;

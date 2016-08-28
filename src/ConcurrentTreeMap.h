@@ -4,7 +4,7 @@
 #define LEFT 0
 #define RIGHT 1
 template<typename K, typename V>
-class TreeMap
+class ConcurrentTreeMap
 {
 private:
 	Node<K, V>* m_root;
@@ -24,7 +24,7 @@ private:
 	inline bool isValidBST(Node<K, V>* node, K min, K max);
 
 public:
-	TreeMap();
+	ConcurrentTreeMap();
 
 	V lookup(const K key);
 	bool insert(K key, V value);
@@ -33,49 +33,49 @@ public:
 };
 
 template<typename K, typename V>
-TreeMap<K, V>::TreeMap()
+ConcurrentTreeMap<K, V>::ConcurrentTreeMap()
 {
 	m_root = newLeafNode(std::numeric_limits<K>::min(), std::numeric_limits<V>::min());
 	m_root->m_child[RIGHT] = newLeafNode(std::numeric_limits<K>::max(), std::numeric_limits<V>::max());
 }
 
 template<typename K, typename V>
-Node<K, V>* TreeMap<K, V>::getAddress(Node<K, V>* p)
+Node<K, V>* ConcurrentTreeMap<K, V>::getAddress(Node<K, V>* p)
 {
 	return (Node<K, V>*)((uintptr_t)p & ~((uintptr_t)3));
 }
 template<typename K, typename V>
-inline bool TreeMap<K, V>::isNull(Node<K, V>* p)
+inline bool ConcurrentTreeMap<K, V>::isNull(Node<K, V>* p)
 {
 	return ((uintptr_t)p & 2) != 0;
 }
 
 template<typename K, typename V>
-inline bool TreeMap<K, V>::isLocked(Node<K, V>* p)
+inline bool ConcurrentTreeMap<K, V>::isLocked(Node<K, V>* p)
 {
 	return ((uintptr_t)p & 1) != 0;
 }
 
 template<typename K, typename V>
-inline Node<K, V>* TreeMap<K, V>::setLock(Node<K, V>* p)
+inline Node<K, V>* ConcurrentTreeMap<K, V>::setLock(Node<K, V>* p)
 {
 	return (Node<K, V>*) ((uintptr_t)p | 1);
 }
 
 template<typename K, typename V>
-inline Node<K, V>* TreeMap<K, V>::unsetLock(Node<K, V>* p)
+inline Node<K, V>* ConcurrentTreeMap<K, V>::unsetLock(Node<K, V>* p)
 {
 	return (Node<K, V>*) ((uintptr_t)p & ~((uintptr_t)1));
 }
 
 template<typename K, typename V>
-inline Node<K, V>* TreeMap<K, V>::setNull(Node<K, V>* p)
+inline Node<K, V>* ConcurrentTreeMap<K, V>::setNull(Node<K, V>* p)
 {
 	return (Node<K, V>*) ((uintptr_t)p | 2);
 }
 
 template<typename K, typename V>
-inline bool TreeMap<K, V>::CAS(Node<K, V>* parent, int which, Node<K, V>* oldChild, Node<K, V>* newChild)
+inline bool ConcurrentTreeMap<K, V>::CAS(Node<K, V>* parent, int which, Node<K, V>* oldChild, Node<K, V>* newChild)
 {
 	if (parent->m_child[which] == oldChild)
 	{
@@ -88,13 +88,13 @@ inline bool TreeMap<K, V>::CAS(Node<K, V>* parent, int which, Node<K, V>* oldChi
 }
 
 template<typename K, typename V>
-inline Node<K, V>* TreeMap<K, V>::newLeafNode(K key, V value)
+inline Node<K, V>* ConcurrentTreeMap<K, V>::newLeafNode(K key, V value)
 {
 	return new Node<K, V>(key, value, setNull(nullptr), setNull(nullptr));
 }
 
 template<typename K, typename V>
-inline bool TreeMap<K, V>::lockEdge(Node<K, V>* parent, Node<K, V>* oldChild, int which, bool n)
+inline bool ConcurrentTreeMap<K, V>::lockEdge(Node<K, V>* parent, Node<K, V>* oldChild, int which, bool n)
 {
 	if (isLocked(parent->m_child[which]))
 	{
@@ -120,13 +120,13 @@ inline bool TreeMap<K, V>::lockEdge(Node<K, V>* parent, Node<K, V>* oldChild, in
 }
 
 template<typename K, typename V>
-inline void TreeMap<K, V>::unlockEdge(Node<K, V>* parent, int which)
+inline void ConcurrentTreeMap<K, V>::unlockEdge(Node<K, V>* parent, int which)
 {
 	parent->m_child[which] = unsetLock(parent->m_child[which]);
 }
 
 template<typename K, typename V>
-inline void TreeMap<K, V>::seek(K key, Node<K, V>** parent, Node<K, V>** node, Node<K, V>** injectionPoint)
+inline void ConcurrentTreeMap<K, V>::seek(K key, Node<K, V>** parent, Node<K, V>** node, Node<K, V>** injectionPoint)
 {
 	Node<K, V>* prev[2];
 	Node<K, V>* curr[2];
@@ -219,7 +219,7 @@ END:
 }
 
 template<typename K, typename V>
-inline bool TreeMap<K, V>::findSmallest(Node<K, V>* node, Node<K, V>* rChild, Node<K, V>** succNode, Node<K, V>** succParent)
+inline bool ConcurrentTreeMap<K, V>::findSmallest(Node<K, V>* node, Node<K, V>* rChild, Node<K, V>** succNode, Node<K, V>** succParent)
 {
 	//find the node with the smallest key in the subtree rooted at the right child
 	Node<K, V>* prev;
@@ -254,7 +254,7 @@ inline bool TreeMap<K, V>::findSmallest(Node<K, V>* node, Node<K, V>* rChild, No
 }
 
 template<typename K, typename V>
-V TreeMap<K, V>::lookup(const K key)
+V ConcurrentTreeMap<K, V>::lookup(const K key)
 {
 	Node<K, V>* parent;
 	Node<K, V>* node;
@@ -272,7 +272,7 @@ V TreeMap<K, V>::lookup(const K key)
 }
 
 template<typename K, typename V>
-inline bool TreeMap<K, V>::insert(K key, V value)
+inline bool ConcurrentTreeMap<K, V>::insert(K key, V value)
 {
 	Node<K, V>* parent;
 	Node<K, V>* node;
@@ -300,7 +300,7 @@ inline bool TreeMap<K, V>::insert(K key, V value)
 }
 
 template<typename K, typename V>
-inline bool TreeMap<K, V>::remove(K key)
+inline bool ConcurrentTreeMap<K, V>::remove(K key)
 {
 	Node<K, V>* parent;
 	Node<K, V>* node;
@@ -446,7 +446,7 @@ inline bool TreeMap<K, V>::remove(K key)
 }
 
 template<typename K, typename V>
-inline bool TreeMap<K, V>::isValidBST(Node<K, V>* node, K min, K max)
+inline bool ConcurrentTreeMap<K, V>::isValidBST(Node<K, V>* node, K min, K max)
 {
   if(isNull(node))
   {
@@ -460,7 +460,7 @@ inline bool TreeMap<K, V>::isValidBST(Node<K, V>* node, K min, K max)
 }
 
 template<typename K, typename V>
-bool TreeMap<K, V>::isValidTree()
+bool ConcurrentTreeMap<K, V>::isValidTree()
 {
 	return(isValidBST(m_root, std::numeric_limits<K>::min(), std::numeric_limits<K>::max()));
 }

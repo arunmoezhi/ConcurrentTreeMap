@@ -1,8 +1,48 @@
 #pragma once
+#include<atomic>
 #include<limits>
-#include"Node.h"
+
 #define LEFT 0
 #define RIGHT 1
+
+template<typename K, typename V>
+class Node
+{
+	template<typename K, typename V>
+	friend class ConcurrentTreeMap;
+private:
+	K m_key;
+	V m_value;
+	std::atomic<Node<K, V>*> m_child[2];
+
+public:
+	Node<K, V>();
+	Node<K, V>(K key, V value);
+	Node<K, V>(K key, V value, Node<K, V>* left, Node<K, V>* right);
+};
+
+template <typename K, typename V>
+Node<K, V>::Node()
+{
+
+}
+
+template <typename K, typename V>
+Node<K, V>::Node(K key, V value)
+{
+	m_key = key;
+	m_value = value;
+}
+
+template <typename K, typename V>
+Node<K, V>::Node(K key, V value, Node<K, V>* left, Node<K, V>* right)
+{
+	m_key = key;
+	m_value = value;
+	m_child[0] = left;
+	m_child[1] = right;
+}
+
 template<typename K, typename V>
 class ConcurrentTreeMap
 {
@@ -21,6 +61,7 @@ private:
 	inline bool lockEdge(Node<K, V>* parent, Node<K, V>* oldChild, int which, bool n);
 	inline void unlockEdge(Node<K, V>* parent, int which);
 	inline bool findSmallest(Node<K, V>* node, Node<K, V>* rChild, Node<K, V>** succNode, Node<K, V>** succParent);
+	inline unsigned long getSize(Node<K, V>* node, unsigned long sizeSoFar);
 	inline bool isValidBST(Node<K, V>* node, K min, K max);
 
 public:
@@ -29,6 +70,7 @@ public:
 	V lookup(const K key);
 	bool insert(K key, V value);
 	bool remove(K key);
+	unsigned long size();
 	bool isValidTree();
 };
 
@@ -477,6 +519,22 @@ inline bool ConcurrentTreeMap<K, V>::remove(K key)
 			}
 		}
 	}
+}
+
+template<typename K, typename V>
+inline unsigned long ConcurrentTreeMap<K, V>::getSize(Node<K, V>* node, unsigned long sizeSoFar)
+{
+	if(isNull(node))
+	{
+		return sizeSoFar;
+	}
+	return 1 + getSize(node->m_child[LEFT], sizeSoFar) + getSize(node->m_child[RIGHT], sizeSoFar);
+}
+
+template<typename K, typename V>
+unsigned long ConcurrentTreeMap<K, V>::size()
+{
+	return getSize(m_root, 0) - 2;
 }
 
 template<typename K, typename V>

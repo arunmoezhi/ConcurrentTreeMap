@@ -15,7 +15,7 @@ int deletePercent;
 unsigned long keyRange;
 volatile bool stop=false;
 struct timespec runTime;
-ConcurrentTreeMap<int, int> map;
+ConcurrentTreeMap<unsigned long, unsigned long> map;
 
 static inline unsigned long getRandomKey(gsl_rng* r)
 {
@@ -94,6 +94,7 @@ int main(int argc, char *argv[])
 	{
 		pthread_join(threadArray[i], NULL);
 	}
+	map.size();
 	assert(map.isValidTree());
 	pthread_exit(NULL);
 	return 0;

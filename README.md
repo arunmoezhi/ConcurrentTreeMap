@@ -1,9 +1,5 @@
 #  ConcurrentTreeMap
-This repository contains implementation of a concurrent tree map. This uses a lock-based internal Binary Search Tree.
-
-The algorithm is described in our paper **CASTLE: Fast Concurrent Internal Binary Search Tree using Edge-Based Locking** published in PPoPP'15.
-
-The technical report is available in the papers directory
+This repository contains implementation of a concurrent tree map. This uses a lock-based internal Binary Search Tree. The algorithm is described in our paper **CASTLE: Fast Concurrent Internal Binary Search Tree using Edge-Based Locking** published in PPoPP'15. The technical report is available in the papers directory.
 
 How to compile?
 1. Change the Makefile appropriately and run make from your shell to build.

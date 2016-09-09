@@ -1,4 +1,5 @@
-#pragma once
+#ifndef CONCURRENT_TREE_MAP_H
+#define CONCURRENT_TREE_MAP_H
 #include<atomic>
 #include<limits>
 
@@ -8,7 +9,7 @@
 template<typename K, typename V>
 class Node
 {
-	template<typename K, typename V>
+	template<typename K1, typename V1>
 	friend class ConcurrentTreeMap;
 private:
 	K m_key;
@@ -556,3 +557,5 @@ bool ConcurrentTreeMap<K, V>::isValidTree()
 {
 	return(isValidBST(m_root, std::numeric_limits<K>::min(), std::numeric_limits<K>::max()));
 }
+#endif
+

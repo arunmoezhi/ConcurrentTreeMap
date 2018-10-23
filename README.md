@@ -6,9 +6,9 @@ This repository contains implementation of a concurrent tree map. This uses a lo
 
 ## How to run?
 
-`$ ./bin/concurrentTreeMap.o numOfThreads read% insert% delete% durationInSeconds maximumKeySize initialSeed`
+`$ ./bin/ConcurrentTreeMap.o numOfThreads read% insert% delete% durationInSeconds maximumKeySize initialSeed`
 
-### Example: `$ ./bin/concurrentTreeMap.o 64 70 20 10 1 10000 0`
+### Example: `$ ./bin/ConcurrentTreeMap.o 64 70 20 10 1 10000 0`
 
 ## Member Functions:
 * `ConcurrentTreeMap()` - constructs a concurrent tree map

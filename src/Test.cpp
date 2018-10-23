@@ -56,6 +56,21 @@ void *operateOnTree(void* id)
 	return NULL;
 }
 
+void testRange()
+{
+  unsigned long min = keyRange/20;
+  unsigned long max = keyRange/10;
+  std::list<Node<unsigned long, unsigned long>*> out = map.range(min, max);
+  unsigned long prevKey = std::numeric_limits<unsigned long>::min();
+  for(const auto& node : out)
+  {
+    unsigned long currKey = node->getKey();
+    assert(currKey >= min && currKey <= max && currKey >= prevKey);
+    prevKey = currKey;
+  }
+  return;
+}
+
 int main(int argc, char *argv[])
 {
 	unsigned long lseed;
@@ -96,6 +111,7 @@ int main(int argc, char *argv[])
 	}
 	map.size();
 	assert(map.isValidTree());
+  testRange();
 	pthread_exit(NULL);
 	return 0;
 }

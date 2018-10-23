@@ -2,6 +2,7 @@
 #define CONCURRENT_TREE_MAP_H
 #include<atomic>
 #include<limits>
+#include<list>
 
 #define LEFT 0
 #define RIGHT 1
@@ -20,6 +21,7 @@ public:
 	Node<K, V>();
 	Node<K, V>(K key, V value);
 	Node<K, V>(K key, V value, Node<K, V>* left, Node<K, V>* right);
+  K getKey();
 };
 
 template <typename K, typename V>
@@ -44,6 +46,12 @@ Node<K, V>::Node(K key, V value, Node<K, V>* left, Node<K, V>* right)
 	m_child[1] = right;
 }
 
+template <typename K, typename V>
+K Node<K, V>::getKey()
+{
+  return m_key;
+}
+
 template<typename K, typename V>
 class ConcurrentTreeMap
 {
@@ -64,6 +72,7 @@ private:
 	inline bool findSmallest(Node<K, V>* node, Node<K, V>* rChild, Node<K, V>** succNode, Node<K, V>** succParent);
 	inline unsigned long getSize(Node<K, V>* node, unsigned long sizeSoFar);
 	inline bool isValidBST(Node<K, V>* node, K min, K max);
+  inline void rangeQuery(std::list<Node<K, V>*>& out, Node<K, V>* node, K min, K max);
 
 public:
 	ConcurrentTreeMap();
@@ -72,6 +81,7 @@ public:
 	bool insert(K key, V value);
 	bool remove(K key);
 	unsigned long size();
+  std::list<Node<K, V>*> range(K min, K max);
 	bool isValidTree();
 };
 
@@ -536,6 +546,35 @@ template<typename K, typename V>
 unsigned long ConcurrentTreeMap<K, V>::size()
 {
 	return getSize(m_root, 0) - 2;
+}
+
+template<typename K, typename V>
+inline void ConcurrentTreeMap<K, V>::rangeQuery(std::list<Node<K, V>*>& out, Node<K, V>* node, K min, K max)
+{
+  if(isNull(node))
+  {
+    return;
+  }
+  if(node->m_key >= min)
+  {
+    rangeQuery(out, node->m_child[LEFT], min, max);
+  }
+  if(node->m_key >=min && node->m_key <=max)
+  {
+    out.push_back(node);
+  }
+  if(node->m_key <= max)
+  {
+    rangeQuery(out, node->m_child[RIGHT], min, max);
+  }
+}
+
+template<typename K, typename V>
+std::list<Node<K, V>*> ConcurrentTreeMap<K, V>::range(K min, K max)
+{
+  std::list<Node<K, V>*> out;
+  rangeQuery(out, m_root, min, max);
+  return out;
 }
 
 template<typename K, typename V>
